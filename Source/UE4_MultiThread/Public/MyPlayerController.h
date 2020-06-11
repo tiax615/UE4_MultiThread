@@ -23,4 +23,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "MultiThread")
 		void StopMultiThread();
+
+	UFUNCTION(BlueprintCallable, Category = "cao")
+		bool Cao();
 };

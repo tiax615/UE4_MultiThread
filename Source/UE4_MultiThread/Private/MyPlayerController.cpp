@@ -15,3 +15,17 @@ void AMyPlayerController::StopMultiThread()
 {
 	FPrimeNumberWorker::Shutdown();
 }
+
+bool AMyPlayerController::Cao()
+{
+	size_t t = 10086;
+	int a = -1;
+	if (t > a)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
