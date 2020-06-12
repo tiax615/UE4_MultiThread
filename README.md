@@ -18,7 +18,7 @@ Content/                                            - 资源文件夹
         MultiThread
 Source/                                             - cpp文件夹
     Private/
-        PrimeNumberWorker.cpp                        - 纯cpp类继承FRunnable
+        PrimeNumberWorker.cpp                       - 纯cpp类继承FRunnable
         MyPlayerController.cpp                      - 命名空间中实现TaskGraph，以及以上FRunnable的使用
 ```
 
@@ -109,3 +109,4 @@ void ASimpleActor::RunSimpleRunnable()
 ## 999. 参考资料
 1. 官方Wiki，作者Rama https://www.ue4community.wiki/Legacy/Multi-Threading:_How_to_Create_Threads_in_UE4
 2. 官方Wiki，作者Rama https://www.ue4community.wiki/Legacy/Multi-Threading:_Task_Graph_System
+3. UE4 C++基础教程-多线程，蓝子悠悠 https://zhuanlan.zhihu.com/p/133921916
