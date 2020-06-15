@@ -28,4 +28,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
 		void StopSimpleRunnable();
+
+	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
+		void StartTask(int TotalToGet);
+
+private:
+	void CheckAllTasksDone();
+
+	FTimerHandle MyTimerHandle;
 };
