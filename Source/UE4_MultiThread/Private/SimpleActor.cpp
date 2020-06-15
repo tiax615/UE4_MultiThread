@@ -1,5 +1,4 @@
 #include "SimpleActor.h"
-#include "HAL/RunnableThread.h"
 #include "SimpleRunnable.h"
 
 // Sets default values
@@ -26,6 +25,10 @@ void ASimpleActor::Tick(float DeltaTime)
 
 void ASimpleActor::RunSimpleRunnable()
 {
-	FRunnable* SimpleRunnable = new FSimpleRunnable();
-	FRunnableThread* SimpleRunnableThread = FRunnableThread::Create(SimpleRunnable, TEXT("MySimpleRunnable"));
+	FSimpleRunnable::JoyInit();
+}
+
+void ASimpleActor::StopSimpleRunnable()
+{
+	FSimpleRunnable::Shutdown();
 }

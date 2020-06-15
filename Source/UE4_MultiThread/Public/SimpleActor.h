@@ -25,4 +25,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
 		void RunSimpleRunnable();
+
+	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
+		void StopSimpleRunnable();
 };

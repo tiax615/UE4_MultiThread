@@ -102,9 +102,132 @@ void ASimpleActor::RunSimpleRunnable()
 }
 ```
 
-使用的时候出现一个奇怪的现象，每次打印的不是连续的整数，而是每个数都多加了1
+使用的时候出现一个奇怪的现象，每次打印的不是连续的整数，而是每个数都多加了1。可能是UE_LOG里，Count++执行了两次。
+![最简单形式的运行结果](./MultiThread/MultiThread1.png)
 
-![](./MultiThread/MultiThread1.png)
+## 3.2. 改进
+### 3.2.1. 创建和释放
+以上最简单的形式，只是能把FRunnable用起来，还差很多东西，参考官方Wiki稍作说明和简化。
+
+为了方便创建线程，在SimpleRunnable类中定义静态单例MySimpleRunnable，这个线程只能创建一次。和存放线程的指针MyRunnableThread，以便在合适的时候释放掉。UE4中纯C++类需要手动管理内存。
+
+包含头文件HAL/Runnable.h和HAL/RunnableThread.h。初始化MySimpleRunnable为nullptr，在构造函数中Create这个MyRunnableThread线程，在析构函数中delete。
+```
+static FSimpleRunnable* MySimpleRunnable;
+class FRunnableThread* MyRunnableThread;
+
+FSimpleRunnable* FSimpleRunnable::MySimpleRunnable = nullptr;
+
+FSimpleRunnable::FSimpleRunnable()
+{
+	MyRunnableThread = FRunnableThread::Create(this, TEXT("MySimpleRunnable"));
+}
+
+FSimpleRunnable::~FSimpleRunnable()
+{
+	delete MyRunnableThread;
+	MyRunnableThread = nullptr;
+}
+```
+
+再新增一个静态方法JoyInit，只要包含了SimpleRunnable.h，在任何地方调用都能创建一个SimpleRunnable线程单例。当MySimpleRunnable是空指针并且当前平台支持多线程时，创建新的SimpleRunnable实例并让MySimpleRunnable指向它。
+```
+static FSimpleRunnable* JoyInit();
+
+FSimpleRunnable* FSimpleRunnable::JoyInit()
+{
+	if (!MySimpleRunnable && FPlatformProcess::SupportsMultithreading())
+	{
+		MySimpleRunnable = new FSimpleRunnable();
+	}
+}
+```
+
+### 3.2.2. 退出
+那怎么退出呢。如果Run中的代码执行完了，会自动执行Stop和Exit退出，否则就需要手动去中断。这里使用FThreadSafeCounter这个计数去判断，是否还要继续执行Run的方法，当计数不为0时，结束Run。
+
+在构造时初始化计数StopTaskCounter，将Run中的while(true)改为While(StopTaskCounter.GetValue()==0)。在主线程中，调用SimpleRunnable类的shutdown()就可以主动退出
+```
+FThreadSafeCounter StopTaskCounter;
+void EnsureCompletion();
+static void Shutdown();
+
+FSimpleRunnable::FSimpleRunnable():StopTaskCounter(0)
+{
+	MyRunnableThread = FRunnableThread::Create(this, TEXT("MySimpleRunnable"));
+}
+
+void FSimpleRunnable::EnsureCompletion()
+{
+	Stop();
+	MyRunnableThread->WaitForCompletion();
+}
+
+uint32 FSimpleRunnable::Run()
+{
+	UE_LOG(LogTemp, Warning, TEXT("SimpleRunnable Run"));
+
+	int Count = 0;
+	while (StopTaskCounter.GetValue()==0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%d"), Count);
+		Count++;
+		FPlatformProcess::Sleep(0.5);
+	}
+	return 0;
+}
+
+void FSimpleRunnable::Stop()
+{
+	UE_LOG(LogTemp, Warning, TEXT("SimpleRunnable Stop"));
+	StopTaskCounter.Increment();
+}
+
+void FSimpleRunnable::Shutdown()
+{
+	if (MySimpleRunnable)
+	{
+		MySimpleRunnable->EnsureCompletion();
+		delete MySimpleRunnable;
+		MySimpleRunnable = nullptr;
+	}
+}
+```
+
+### 3.2.3. 使用
+还是在SimpleActor中，实现SimRunnable的使用。
+
+SimpleActor.h，声明蓝图可调用的方法RunSimpleRunnable()和StopSimpleRunnable()，用于开启和停止SimpleRunnable线程。
+```
+public:	
+	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
+		void RunSimpleRunnable();
+
+	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
+		void StopSimpleRunnable();
+```
+
+SimpleActor.cpp，头文件只需要包含SimpleRunnable.h，通过静态方法开启和停止，使用方法非常简单。
+```
+void ASimpleActor::RunSimpleRunnable()
+{
+	FSimpleRunnable::JoyInit();
+}
+
+void ASimpleActor::StopSimpleRunnable()
+{
+	FSimpleRunnable::Shutdown();
+}
+```
+
+新建一个继承自SimpleActor类的蓝图类BP_SimpleActor，EventBeginPlay时使用RunSimpleRunnable，EventEndPlay时使用
+StopSimpleRunnable。
+
+![BP_SimpleActor使用SimpleRunnable](./MultiThread/MultiThread2.png)
+
+Play的时候正常开启了线程，结束游戏的时候也停止了下来。
+
+![改进的运行结果](./MultiThread/MultiThread3.png)
 
 ## 999. 参考资料
 1. 官方Wiki，作者Rama https://www.ue4community.wiki/Legacy/Multi-Threading:_How_to_Create_Threads_in_UE4
