@@ -16,14 +16,14 @@ Content/                                            - 资源文件夹
         BP_MyPlayerController
         BP_TestGameMode
         MultiThread
-	BP_SimpleActor									- 简化的实现
-	SimpleThread									- 简化的实现的地图
+    BP_SimpleActor									- 简化的实现
+    SimpleThread									- 简化的实现的地图
 Source/                                             - cpp文件夹
     Private/
         MyPlayerController.cpp                      - 命名空间中实现TaskGraph，以及以上FRunnable的使用
         PrimeNumberWorker.cpp                       - 纯cpp类继承FRunnable
-		SimpleActor.cpp								- 使用SimpleRunnable的Actor类
-		SimpleRunnable.cpp							- FRunnable的一个简单应用
+        SimpleActor.cpp								- 使用SimpleRunnable的Actor类
+        SimpleRunnable.cpp							- FRunnable的一个简单应用
 ```
 
 ## 2. 官方Wiki-Rama
@@ -417,6 +417,7 @@ void ASimpleActor::StartAsyncTask()
 同样在蓝图BP_SimpleActor的EventBeginPlay中连上StartAsyncTask，运行结果如下。可以看到FRunnable，TaskGraph，AsyncTasks各自异步运行，没有影响到主线程。
 
 ![开启异步任务](./MultiThread/MultiThread6.png)
+
 ![异步任务运行结果](./MultiThread/MultiThread7.png)
 
 ### 6. 总结
@@ -429,6 +430,7 @@ TaskGraph不适合做计算量大的操作，可能带来严重的卡顿，因�
 AsyncTasks类似TaskGraph，但更简洁。AsyncTask系统实现的多线程与你自己继承FRunnable实现的原理相似，不过他在用法上比较简单，而且还可以直接借用UE4提供的线程池，很方便。
 
 借用知乎大佬的图，描述了多线程相关类的关系，可以参考。
+
 ![MultiThread](./MultiThread/MultiThread8.jpg)
 
 ## 999. 参考资料
