@@ -30,10 +30,26 @@ public:
 		void StopSimpleRunnable();
 
 	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
-		void StartTask(int TotalToGet);
+		void StartTaskGraph(int TotalToGet);
+
+	UFUNCTION(BlueprintCallable, Category = "SimpleActor")
+		void StartAsyncTask();
 
 private:
 	void CheckAllTasksDone();
 
 	FTimerHandle MyTimerHandle;
+};
+
+class FSimpleAsyncTasks : public FNonAbandonableTask
+{
+	friend class FAutoDeleteAsyncTask<FSimpleAsyncTasks>;
+public:
+	FSimpleAsyncTasks(int32 Input1, int32 Input2);
+
+protected:
+	int32 MyInput1;
+	int32 MyInput2;
+	void DoWork();
+	FORCEINLINE TStatId GetStatId() const;
 };

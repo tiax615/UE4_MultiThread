@@ -26,7 +26,7 @@ Source/                                             - cpp文件夹
 		SimpleRunnable.cpp							- FRunnable的一个简单应用
 ```
 
-## 2. 官方Wiki
+## 2. 官方Wiki-Rama
 大佬的代码，我看着有点吃力。
 ### 2.1. FRunnable
 详见PrimeNumberWorker.h/PrimeNumberWorker.cpp
@@ -357,7 +357,79 @@ void ASimpleActor::CheckAllTasksDone()
 ![任务图SimpleTaskGraph运行结果](./MultiThread/MultiThread5.png)
 
 ## 5. AsyncTasks
-除了以上的“标准多线程”FRunnable和任务图系统TaskGraph，还有AsyncTasks也能实现不阻塞主线程而异步干事情。
+除了以上的“标准多线程”FRunnable和任务图系统TaskGraph，还有AsyncTasks也能实现不阻塞主线程而异步干事情。我们可以使用FAsyncTask或者FAutoDeleteAsyncTask。使用FAsyncTask 时，我们需要手动停止或删除任务；使用FAutoDeleteAsyncTask时，系统则会自动在任务结束后，删除任务。
+
+### 5.1. 类
+这次在SimpleActor中新建了一个类FSimpleAsyncTasks，继承自FNonAbandonableTask类，友元类FAutoDeleteAsyncTask。
+
+SimpleActor.h中FSimpleAsyncTasks类的声明如下，可以接收两个输入。
+```
+class FSimpleAsyncTasks : public FNonAbandonableTask
+{
+	friend class FAutoDeleteAsyncTask<FSimpleAsyncTasks>;
+public:
+	FSimpleAsyncTasks(int32 Input1, int32 Input2);
+
+protected:
+	int32 MyInput1;
+	int32 MyInput2;
+	void DoWork();
+	FORCEINLINE TStatId GetStatId() const;
+};
+```
+
+SimpleActor.cpp中的实现如下，GetStatId()没有直接使用，但是必须的，类似TaskGraph。DoWork()中实现业务逻辑，这里每隔0.2s打印一个从1递增的整数直到5
+```
+FSimpleAsyncTasks::FSimpleAsyncTasks(int32 Input1, int32 Input2) :
+	MyInput1(Input1),
+	MyInput2(Input2)
+{
+}
+
+void FSimpleAsyncTasks::DoWork()
+{
+	for (int i = 1; i < 6; i++)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimpleAsyncTasks Dowork %d"),i);
+		FPlatformProcess::Sleep(0.2);
+	}
+}
+
+FORCEINLINE TStatId FSimpleAsyncTasks::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(FSimpleAsyncTasks, STATGROUP_ThreadPoolAsyncTasks);
+}
+```
+
+### 5.2. 使用
+同样在SimpleActor中使用，新增方法StartAsyncTask()。
+```
+UFUNCTION(BlueprintCallable, Category = "SimpleActor")
+		void StartAsyncTask();
+
+void ASimpleActor::StartAsyncTask()
+{
+	// Instantiate a copy of the actual task, and queue the task for execution with StartBackgroundTask()
+	(new FAutoDeleteAsyncTask<FSimpleAsyncTasks>(6,6))->StartBackgroundTask();
+}
+```
+
+同样在蓝图BP_SimpleActor的EventBeginPlay中连上StartAsyncTask，运行结果如下。可以看到FRunnable，TaskGraph，AsyncTasks各自异步运行，没有影响到主线程。
+
+![开启异步任务](./MultiThread/MultiThread6.png)
+![异步任务运行结果](./MultiThread/MultiThread7.png)
+
+### 6. 总结
+FRunnable“标准”多线程，会带来更多的开销，但适合长期连续的操作。
+
+TaskGraph和AsyncTasks是对已有线程的复用。
+
+TaskGraph不适合做计算量大的操作，可能带来严重的卡顿，因为Tick是在TaskGraph中做的。同时也可以将任务分给其他线程执行，可以设置任务依赖顺序。
+
+AsyncTasks类似TaskGraph，但更简洁。AsyncTask系统实现的多线程与你自己继承FRunnable实现的原理相似，不过他在用法上比较简单，而且还可以直接借用UE4提供的线程池，很方便。
+
+借用知乎大佬的图，描述了多线程相关类的关系，可以参考。
+![MultiThread](./MultiThread/MultiThread8.jpg)
 
 ## 999. 参考资料
 1. 官方Wiki，作者Rama https://www.ue4community.wiki/Legacy/Multi-Threading:_How_to_Create_Threads_in_UE4
@@ -365,3 +437,4 @@ void ASimpleActor::CheckAllTasksDone()
 3. 官方Wiki，作者不详 https://www.ue4community.wiki/Legacy/Using_AsyncTasks
 3. UE4 C++基础教程-多线程，蓝子悠悠 https://zhuanlan.zhihu.com/p/133921916
 4. 《Exploring in UE4》多线程机制详解[原理分析] https://zhuanlan.zhihu.com/p/38881269
+5. https://www.cnblogs.com/mcomco/p/11316803.html

@@ -109,10 +109,16 @@ void ASimpleActor::StopSimpleRunnable()
 	FSimpleRunnable::Shutdown();
 }
 
-void ASimpleActor::StartTask(int TotalToGet)
+void ASimpleActor::StartTaskGraph(int TotalToGet)
 {
 	SimpleTaskGraph::GetInts(TotalToGet);
 	GetWorldTimerManager().SetTimer(MyTimerHandle, this, &ASimpleActor::CheckAllTasksDone, 1, true);
+}
+
+void ASimpleActor::StartAsyncTask()
+{
+	// Instantiate a copy of the actual task, and queue the task for execution with StartBackgroundTask()
+	(new FAutoDeleteAsyncTask<FSimpleAsyncTasks>(6,6))->StartBackgroundTask();
 }
 
 void ASimpleActor::CheckAllTasksDone()
@@ -122,4 +128,24 @@ void ASimpleActor::CheckAllTasksDone()
 		GetWorldTimerManager().ClearTimer(MyTimerHandle);
 		UE_LOG(LogTemp, Warning, TEXT("TaskGraph Done!"));
 	}
+}
+
+FSimpleAsyncTasks::FSimpleAsyncTasks(int32 Input1, int32 Input2) :
+	MyInput1(Input1),
+	MyInput2(Input2)
+{
+}
+
+void FSimpleAsyncTasks::DoWork()
+{
+	for (int i = 1; i < 6; i++)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimpleAsyncTasks Dowork %d"),i);
+		FPlatformProcess::Sleep(0.2);
+	}
+}
+
+FORCEINLINE TStatId FSimpleAsyncTasks::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(FSimpleAsyncTasks, STATGROUP_ThreadPoolAsyncTasks);
 }
